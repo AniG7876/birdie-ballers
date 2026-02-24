@@ -2,95 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 45 30% 96%;
+    --foreground: 150 30% 10%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 45 25% 93%;
+    --card-foreground: 150 30% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 45 30% 96%;
+    --popover-foreground: 150 30% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 152 45% 25%;
+    --primary-foreground: 45 30% 96%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 42 60% 55%;
+    --secondary-foreground: 150 30% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 45 15% 88%;
+    --muted-foreground: 150 10% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 42 75% 50%;
+    --accent-foreground: 150 30% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 45 30% 96%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 150 10% 82%;
+    --input: 150 10% 82%;
+    --ring: 152 45% 25%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 152 35% 18%;
+    --sidebar-foreground: 45 30% 96%;
+    --sidebar-primary: 42 75% 50%;
+    --sidebar-primary-foreground: 150 30% 10%;
+    --sidebar-accent: 152 30% 24%;
+    --sidebar-accent-foreground: 45 30% 96%;
+    --sidebar-border: 152 25% 28%;
+    --sidebar-ring: 42 75% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Custom tokens */
+    --success: 152 55% 35%;
+    --success-foreground: 45 30% 96%;
+    --gold: 42 85% 55%;
+    --gold-foreground: 150 30% 10%;
+    --fairway: 152 45% 25%;
+    --fairway-light: 152 30% 90%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 150 20% 8%;
+    --foreground: 45 20% 92%;
+    --card: 150 20% 12%;
+    --card-foreground: 45 20% 92%;
+    --popover: 150 20% 12%;
+    --popover-foreground: 45 20% 92%;
+    --primary: 152 45% 40%;
+    --primary-foreground: 150 30% 8%;
+    --secondary: 42 50% 45%;
+    --secondary-foreground: 45 20% 92%;
+    --muted: 150 15% 18%;
+    --muted-foreground: 45 10% 60%;
+    --accent: 42 65% 50%;
+    --accent-foreground: 150 30% 8%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 45 20% 92%;
+    --border: 150 15% 22%;
+    --input: 150 15% 22%;
+    --ring: 152 45% 40%;
+    --sidebar-background: 150 20% 6%;
+    --sidebar-foreground: 45 20% 92%;
+    --sidebar-primary: 42 65% 50%;
+    --sidebar-primary-foreground: 150 30% 8%;
+    --sidebar-accent: 150 15% 14%;
+    --sidebar-accent-foreground: 45 20% 92%;
+    --sidebar-border: 150 15% 18%;
+    --sidebar-ring: 42 65% 50%;
+    --success: 152 45% 40%;
+    --success-foreground: 150 30% 8%;
+    --gold: 42 75% 55%;
+    --gold-foreground: 150 30% 8%;
+    --fairway: 152 45% 40%;
+    --fairway-light: 152 20% 18%;
   }
 }
 
@@ -100,6 +95,12 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    letter-spacing: -0.01em;
   }
 }
