@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
-const MAX_POINTS = 10;
-const MAX_BID = 2;
+const MAX_POINTS = 10; // total credits per user per tournament
+const MAX_BID = 2; // max shares per golfer
 const MIN_BID = 1;
 
 interface Props {
