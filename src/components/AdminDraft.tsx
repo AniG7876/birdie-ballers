@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTournaments, useAllBids, useGolfers } from '@/hooks/useFantasyData';
+import { useTournaments, useAllBids, useGolfers, useSettings } from '@/hooks/useFantasyData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,16 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Gavel } from 'lucide-react';
 
-const MAX_SHARES = 2;
-
 export default function AdminDraft() {
   const { data: tournaments } = useTournaments();
   const { data: golfers } = useGolfers();
+  const { data: settings } = useSettings();
   const [selectedTournament, setSelectedTournament] = useState<string>('');
   const { data: allBids } = useAllBids(selectedTournament || undefined);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
+
+  const MAX_SHARES = settings?.max_shares ?? 2;
 
   const draftableTournaments = tournaments?.filter((t) => t.status === 'drafting') ?? [];
 
@@ -27,10 +28,8 @@ export default function AdminDraft() {
     setProcessing(true);
 
     try {
-      // Delete existing allocations for this tournament
       await supabase.from('share_allocations').delete().eq('tournament_id', selectedTournament);
 
-      // For each golfer, allocate shares to highest bidders
       const allocations: { user_id: string; tournament_id: string; golfer_id: string; shares: number }[] = [];
 
       for (const golfer of golfers) {
@@ -42,13 +41,11 @@ export default function AdminDraft() {
 
         let sharesRemaining = MAX_SHARES;
 
-        // Group by bid amount for tie resolution
         let i = 0;
         while (i < golferBids.length && sharesRemaining > 0) {
           const currentBidAmount = golferBids[i].bid_amount;
           const tiedBidders = golferBids.filter((b) => b.bid_amount === currentBidAmount);
 
-          // Equal split among tied bidders
           const sharesEach = Math.min(sharesRemaining, MAX_SHARES) / tiedBidders.length;
           const actualSharesEach = Math.min(sharesEach, sharesRemaining / tiedBidders.length);
 
@@ -75,12 +72,11 @@ export default function AdminDraft() {
         if (error) throw error;
       }
 
-      // Move tournament to in_progress
       await supabase.from('tournaments').update({ status: 'in_progress' }).eq('id', selectedTournament);
 
       queryClient.invalidateQueries({ queryKey: ['share-allocations'] });
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
-      toast({ title: 'Draft processed!', description: `${allocations.length} share allocations created.` });
+      toast({ title: 'Draft processed!', description: `${allocations.length} share allocations created. Max shares per golfer: ${MAX_SHARES}.` });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
@@ -97,6 +93,7 @@ export default function AdminDraft() {
         </CardTitle>
         <CardDescription>
           Select a tournament in "drafting" status, then process the sealed bids to allocate golfer shares.
+          Max shares per golfer: <strong>{MAX_SHARES}</strong>.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
