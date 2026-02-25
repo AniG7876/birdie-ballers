@@ -87,6 +87,33 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          key: string
+          label: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          key: string
+          label: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          key?: string
+          label?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       share_allocations: {
         Row: {
           created_at: string

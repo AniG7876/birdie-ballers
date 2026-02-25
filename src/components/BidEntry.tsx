@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGolfers, useBids } from '@/hooks/useFantasyData';
+import { useGolfers, useBids, useSettings } from '@/hooks/useFantasyData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,10 +10,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
-const MAX_POINTS = 10; // total credits per user per tournament
-const MAX_BID = 2; // max shares per golfer
-const MIN_BID = 1;
-
 interface Props {
   tournament: Tables<'tournaments'>;
 }
@@ -22,10 +18,15 @@ export default function BidEntry({ tournament }: Props) {
   const { user } = useAuth();
   const { data: golfers } = useGolfers();
   const { data: existingBids, isLoading: bidsLoading } = useBids(tournament.id, user?.id);
+  const { data: settings, isLoading: settingsLoading } = useSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [bids, setBids] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const MAX_POINTS = settings?.max_points ?? 10;
+  const MAX_BID = settings?.max_bid ?? 2;
+  const MIN_BID = 1;
 
   // Initialize bids from existing data
   useMemo(() => {
@@ -60,7 +61,6 @@ export default function BidEntry({ tournament }: Props) {
       return;
     }
 
-    // Validate min bid
     for (const [, amount] of Object.entries(bids)) {
       if (amount < MIN_BID || amount > MAX_BID) {
         toast({ title: 'Invalid bid', description: `Each bid must be between ${MIN_BID} and ${MAX_BID}.`, variant: 'destructive' });
@@ -70,7 +70,6 @@ export default function BidEntry({ tournament }: Props) {
 
     setSubmitting(true);
 
-    // Delete old bids then insert new
     await supabase.from('bids').delete().eq('user_id', user.id).eq('tournament_id', tournament.id);
 
     const rows = Object.entries(bids).map(([golfer_id, bid_amount]) => ({
@@ -94,7 +93,7 @@ export default function BidEntry({ tournament }: Props) {
     setSubmitting(false);
   };
 
-  if (bidsLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (bidsLoading || settingsLoading) return <p className="text-muted-foreground">Loading…</p>;
 
   return (
     <Card>
@@ -102,7 +101,7 @@ export default function BidEntry({ tournament }: Props) {
         <CardTitle className="text-lg">{tournament.name} — Place Your Bids</CardTitle>
         <CardDescription>
           You have <strong className={remaining < 0 ? 'text-destructive' : 'text-primary'}>{remaining}</strong> of {MAX_POINTS} points remaining.
-          Bid {MIN_BID}–{MAX_BID} per golfer share. Each golfer has 10 shares total.
+          Bid {MIN_BID}–{MAX_BID} per golfer share. Each golfer has {settings?.max_shares ?? 2} shares total.
         </CardDescription>
       </CardHeader>
       <CardContent>

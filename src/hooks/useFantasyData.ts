@@ -99,6 +99,20 @@ export function useUsers() {
   });
 }
 
+export function useSettings() {
+  return useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('settings').select('*');
+      if (error) throw error;
+      // Return as a convenient key→value map
+      const map: Record<string, number> = {};
+      data.forEach((s) => { map[s.key] = Number(s.value); });
+      return map;
+    },
+  });
+}
+
 export function useSeasonLeaderboard() {
   return useQuery({
     queryKey: ['season-leaderboard'],

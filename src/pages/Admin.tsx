@@ -3,6 +3,7 @@ import AppHeader from '@/components/AppHeader';
 import AdminUsers from '@/components/AdminUsers';
 import AdminTournaments from '@/components/AdminTournaments';
 import AdminDraft from '@/components/AdminDraft';
+import AdminSettings from '@/components/AdminSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Admin() {
@@ -18,6 +19,7 @@ export default function Admin() {
             <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
             <TabsTrigger value="draft">Draft</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="tournaments">
             <AdminTournaments />
@@ -27,6 +29,9 @@ export default function Admin() {
           </TabsContent>
           <TabsContent value="users">
             <AdminUsers />
+          </TabsContent>
+          <TabsContent value="settings">
+            <AdminSettings />
           </TabsContent>
         </Tabs>
       </main>
