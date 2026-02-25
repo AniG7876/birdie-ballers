@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
-const MAX_POINTS = 100;
-const MAX_BID = 10;
+const MAX_POINTS = 10;
+const MAX_BID = 2;
 const MIN_BID = 1;
 
 interface Props {

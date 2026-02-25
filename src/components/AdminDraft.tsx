@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Gavel } from 'lucide-react';
 
-const MAX_SHARES = 10;
+const MAX_SHARES = 2;
 
 export default function AdminDraft() {
   const { data: tournaments } = useTournaments();
