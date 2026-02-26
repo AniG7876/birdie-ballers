@@ -10,7 +10,8 @@ export default function Dashboard() {
   const { data: tournaments, isLoading } = useTournaments();
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | undefined>();
 
-  const selectedTournament = tournaments?.find((t) => t.id === selectedTournamentId);
+  const visibleTournaments = tournaments?.filter((t) => !(t as any).hidden) ?? [];
+  const selectedTournament = visibleTournaments.find((t) => t.id === selectedTournamentId);
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,7 +30,7 @@ export default function Dashboard() {
           ) : (
             <>
               <TournamentSelector
-                tournaments={tournaments ?? []}
+                tournaments={visibleTournaments}
                 selectedId={selectedTournamentId}
                 onSelect={setSelectedTournamentId}
               />

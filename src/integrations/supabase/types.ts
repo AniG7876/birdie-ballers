@@ -213,6 +213,7 @@ export type Database = {
           created_at: string
           end_date: string
           espn_event_id: string | null
+          hidden: boolean
           id: string
           name: string
           sort_order: number
@@ -223,6 +224,7 @@ export type Database = {
           created_at?: string
           end_date: string
           espn_event_id?: string | null
+          hidden?: boolean
           id?: string
           name: string
           sort_order: number
@@ -233,6 +235,7 @@ export type Database = {
           created_at?: string
           end_date?: string
           espn_event_id?: string | null
+          hidden?: boolean
           id?: string
           name?: string
           sort_order?: number
