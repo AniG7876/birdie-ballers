@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, EyeOff, Eye } from 'lucide-react';
 import { useState } from 'react';
 
 const STATUSES = ['upcoming', 'bidding', 'drafting', 'in_progress', 'completed'] as const;
@@ -16,6 +16,16 @@ export default function AdminTournaments() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [updatingScores, setUpdatingScores] = useState<string | null>(null);
+
+  const toggleHidden = async (id: string, hidden: boolean) => {
+    const { error } = await supabase.from('tournaments').update({ hidden: !hidden } as any).eq('id', id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['tournaments'] });
+      toast({ title: !hidden ? 'Tournament hidden' : 'Tournament visible' });
+    }
+  };
 
   const changeStatus = async (id: string, status: string) => {
     const { error } = await supabase.from('tournaments').update({ status }).eq('id', id);
@@ -77,6 +87,15 @@ export default function AdminTournaments() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleHidden(t.id, (t as any).hidden ?? false)}
+                  aria-label={`${(t as any).hidden ? 'Show' : 'Hide'} ${t.name}`}
+                  title={`${(t as any).hidden ? 'Show to users' : 'Hide from users'}`}
+                >
+                  {(t as any).hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </Button>
                 {(t.status === 'in_progress' || t.status === 'completed') && (
                   <Button
                     variant="outline"
