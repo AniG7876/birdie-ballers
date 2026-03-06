@@ -65,6 +65,7 @@ export type Database = {
       }
       golfers: {
         Row: {
+          active: boolean
           created_at: string
           espn_player_id: string | null
           id: string
@@ -72,6 +73,7 @@ export type Database = {
           world_rank: number
         }
         Insert: {
+          active?: boolean
           created_at?: string
           espn_player_id?: string | null
           id?: string
@@ -79,6 +81,7 @@ export type Database = {
           world_rank: number
         }
         Update: {
+          active?: boolean
           created_at?: string
           espn_player_id?: string | null
           id?: string
