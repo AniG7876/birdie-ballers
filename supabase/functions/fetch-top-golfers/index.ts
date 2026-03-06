@@ -12,13 +12,19 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Fetch world rankings from ESPN
-    const espnUrl = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/rankings';
+    // Fetch world rankings from ESPN (web subdomain is more reliable)
+    const espnUrl = 'https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/rankings?limit=100';
     console.log('Fetching ESPN world rankings:', espnUrl);
 
-    const espnRes = await fetch(espnUrl);
+    const espnRes = await fetch(espnUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        'Accept': 'application/json',
+      },
+    });
     if (!espnRes.ok) {
-      throw new Error(`ESPN API returned ${espnRes.status}`);
+      const body = await espnRes.text();
+      throw new Error(`ESPN API returned ${espnRes.status}: ${body.slice(0, 200)}`);
     }
 
     const espnData = await espnRes.json();
@@ -27,6 +33,7 @@ Deno.serve(async (req) => {
     const ranks: any[] = espnData?.rankings?.[0]?.ranks ?? [];
 
     if (ranks.length === 0) {
+      console.log('ESPN response keys:', Object.keys(espnData));
       throw new Error('No rankings data returned from ESPN');
     }
 
