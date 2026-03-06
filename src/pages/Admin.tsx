@@ -4,6 +4,7 @@ import AdminUsers from '@/components/AdminUsers';
 import AdminTournaments from '@/components/AdminTournaments';
 import AdminDraft from '@/components/AdminDraft';
 import AdminSettings from '@/components/AdminSettings';
+import AdminGolfers from '@/components/AdminGolfers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Admin() {
