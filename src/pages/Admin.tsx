@@ -18,12 +18,16 @@ export default function Admin() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
+            <TabsTrigger value="golfers">Golfers</TabsTrigger>
             <TabsTrigger value="draft">Draft</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="tournaments">
             <AdminTournaments />
+          </TabsContent>
+          <TabsContent value="golfers">
+            <AdminGolfers />
           </TabsContent>
           <TabsContent value="draft">
             <AdminDraft />

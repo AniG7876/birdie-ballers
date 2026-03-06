@@ -22,6 +22,7 @@ export function useGolfers() {
       const { data, error } = await supabase
         .from('golfers')
         .select('*')
+        .eq('active' as any, true)
         .order('world_rank');
       if (error) throw error;
       return data;
