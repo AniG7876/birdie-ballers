@@ -19,12 +19,13 @@ export function useGolfers() {
   return useQuery({
     queryKey: ['golfers'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('golfers')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from('golfers') as any)
         .select('*')
+        .eq('active', true)
         .order('world_rank');
       if (error) throw error;
-      return data;
+      return data as import('@/integrations/supabase/types').Tables<'golfers'>[];
     },
   });
 }
