@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     console.log(`Got ${items.length} athlete refs, fetching all in parallel...`);
 
-    // Step 2: Fetch ALL athlete details concurrently in one shot
+    // Step 2: Fetch ALL athlete details concurrently
     const fetchResults = await Promise.allSettled(
       items.map(async (item: any, idx: number) => {
         const refUrl = item['$ref'];
@@ -47,7 +47,6 @@ Deno.serve(async (req) => {
         const espnId = String(data.id);
         const name = data.displayName ?? `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim();
         if (!name || !espnId) return null;
-        // rank = position in sorted list (1-indexed)
         return { id: espnId, name, rank: idx + 1 };
       })
     );
@@ -62,67 +61,36 @@ Deno.serve(async (req) => {
       throw new Error('Could not fetch any golfer details from ESPN');
     }
 
-    // Step 3: Bulk upsert via a single batch POST with upsert semantics
-    const upsertRes = await fetch(`${supabaseUrl}/rest/v1/golfers`, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify(
-        golfers.map((g) => ({
-          name: g.name,
-          world_rank: g.rank,
-          espn_player_id: g.id,
-          active: false,
-        }))
-      ),
-    });
+    // Step 3: Bulk upsert — merge on espn_player_id, preserve 'active' column
+    // Use columns param to only update name and world_rank on conflict
+    const upsertRes = await fetch(
+      `${supabaseUrl}/rest/v1/golfers?on_conflict=espn_player_id`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(
+          golfers.map((g) => ({
+            name: g.name,
+            world_rank: g.rank,
+            espn_player_id: g.id,
+            active: false,
+          }))
+        ),
+      }
+    );
 
     if (!upsertRes.ok) {
       const errText = await upsertRes.text();
-      // If upsert fails (no unique constraint on espn_player_id), fall back to individual upserts
-      console.log('Bulk upsert failed, trying individual upserts:', errText.slice(0, 200));
-
-      // Individual upserts as fallback
-      for (const golfer of golfers) {
-        const checkRes = await fetch(`${supabaseUrl}/rest/v1/golfers?espn_player_id=eq.${golfer.id}`, {
-          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
-        });
-        const existing = await checkRes.json();
-
-        if (existing.length > 0) {
-          await fetch(`${supabaseUrl}/rest/v1/golfers?espn_player_id=eq.${golfer.id}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify({ name: golfer.name, world_rank: golfer.rank }),
-          });
-        } else {
-          await fetch(`${supabaseUrl}/rest/v1/golfers`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify({
-              name: golfer.name,
-              world_rank: golfer.rank,
-              espn_player_id: golfer.id,
-              active: false,
-            }),
-          });
-        }
-      }
+      console.error('Bulk upsert failed:', errText.slice(0, 300));
+      throw new Error(`Upsert failed: ${errText.slice(0, 200)}`);
     }
+
+    console.log(`Upserted ${golfers.length} golfers successfully`);
 
     return new Response(
       JSON.stringify({ success: true, upserted: golfers.length }),
