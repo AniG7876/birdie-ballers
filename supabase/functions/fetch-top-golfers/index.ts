@@ -12,30 +12,57 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Fetch world rankings from ESPN (web subdomain is more reliable)
-    const espnUrl = 'https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/rankings?limit=100';
-    console.log('Fetching ESPN world rankings:', espnUrl);
+    // Try multiple ESPN endpoints in order of reliability
+    const endpoints = [
+      'https://site.api.espn.com/apis/site/v2/sports/golf/pga/rankings?limit=100',
+      'https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/rankings?limit=100',
+      'https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/rankings?limit=100',
+    ];
 
-    const espnRes = await fetch(espnUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-        'Accept': 'application/json',
-      },
-    });
-    if (!espnRes.ok) {
-      const body = await espnRes.text();
-      throw new Error(`ESPN API returned ${espnRes.status}: ${body.slice(0, 200)}`);
+    let espnData: any = null;
+    let lastError = '';
+
+    for (const url of endpoints) {
+      console.log('Trying ESPN endpoint:', url);
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.espn.com/',
+            'Origin': 'https://www.espn.com',
+          },
+        });
+        if (res.ok) {
+          espnData = await res.json();
+          console.log('Success with endpoint:', url);
+          break;
+        } else {
+          const body = await res.text();
+          lastError = `${url} returned ${res.status}: ${body.slice(0, 200)}`;
+          console.log('Failed:', lastError);
+        }
+      } catch (e: any) {
+        lastError = `${url} threw: ${e.message}`;
+        console.log('Error:', lastError);
+      }
     }
 
-    const espnData = await espnRes.json();
+    if (!espnData) {
+      throw new Error(`All ESPN endpoints failed. Last error: ${lastError}`);
+    }
 
     // ESPN rankings endpoint: rankings array under rankings[0].ranks
-    const ranks: any[] = espnData?.rankings?.[0]?.ranks ?? [];
+    const ranks: any[] = espnData?.rankings?.[0]?.ranks ?? espnData?.ranks ?? [];
 
     if (ranks.length === 0) {
       console.log('ESPN response keys:', Object.keys(espnData));
-      throw new Error('No rankings data returned from ESPN');
+      console.log('Full response sample:', JSON.stringify(espnData).slice(0, 500));
+      throw new Error('No rankings data found in ESPN response');
     }
+
+    console.log(`Found ${ranks.length} rankings entries`);
 
     const top100 = ranks.slice(0, 100);
     let upserted = 0;
@@ -45,17 +72,19 @@ Deno.serve(async (req) => {
       if (!athlete) continue;
 
       const espnPlayerId = String(athlete.id);
-      const name = athlete.displayName ?? `${athlete.firstName} ${athlete.lastName}`;
-      const worldRank = parseInt(entry.current ?? entry.rank) || 999;
+      const name = athlete.displayName ?? `${athlete.firstName ?? ''} ${athlete.lastName ?? ''}`.trim();
+      const worldRank = parseInt(entry.current ?? entry.rank ?? entry.displayRank) || 999;
 
-      // Upsert golfer by espn_player_id
-      const upsertRes = await fetch(`${supabaseUrl}/rest/v1/golfers?espn_player_id=eq.${espnPlayerId}`, {
+      if (!name) continue;
+
+      // Check if golfer exists
+      const checkRes = await fetch(`${supabaseUrl}/rest/v1/golfers?espn_player_id=eq.${espnPlayerId}`, {
         headers: {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
         },
       });
-      const existing = await upsertRes.json();
+      const existing = await checkRes.json();
 
       if (existing.length > 0) {
         await fetch(`${supabaseUrl}/rest/v1/golfers?espn_player_id=eq.${espnPlayerId}`, {
