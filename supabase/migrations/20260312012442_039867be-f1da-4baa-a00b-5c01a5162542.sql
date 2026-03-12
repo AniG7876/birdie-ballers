@@ -1,0 +1,1 @@
+CREATE POLICY "Allow all deletes on users" ON public.users FOR DELETE TO anon, authenticated USING (true);
