@@ -39,6 +39,19 @@ export default function AdminDraft() {
 
         if (golferBids.length === 0) continue;
 
+        // Rule: if only 1 bidder exists for this golfer → 1 share regardless of MAX_SHARES
+        const uniqueBidderCount = new Set(golferBids.map((b) => b.user_id)).size;
+        if (uniqueBidderCount === 1) {
+          allocations.push({
+            user_id: golferBids[0].user_id,
+            tournament_id: selectedTournament,
+            golfer_id: golfer.id,
+            shares: 1,
+          });
+          continue;
+        }
+
+        // Multiple bidders: distribute up to MAX_SHARES among top bidders
         let sharesRemaining = MAX_SHARES;
 
         let i = 0;
@@ -76,7 +89,10 @@ export default function AdminDraft() {
 
       queryClient.invalidateQueries({ queryKey: ['share-allocations'] });
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
-      toast({ title: 'Draft processed!', description: `${allocations.length} share allocations created. Max shares per golfer: ${MAX_SHARES}.` });
+      toast({
+        title: 'Draft processed!',
+        description: `${allocations.length} share allocations created. Single-bidder golfers receive 1 share; contested golfers split up to ${MAX_SHARES} shares.`,
+      });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
@@ -93,7 +109,7 @@ export default function AdminDraft() {
         </CardTitle>
         <CardDescription>
           Select a tournament in "drafting" status, then process the sealed bids to allocate golfer shares.
-          Max shares per golfer: <strong>{MAX_SHARES}</strong>.
+          Contested golfers split up to <strong>{MAX_SHARES}</strong> shares; solo bidders receive exactly <strong>1</strong> share.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

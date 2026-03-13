@@ -219,6 +219,8 @@ export type Database = {
           hidden: boolean
           id: string
           name: string
+          slash_golf_tourn_id: string | null
+          slash_golf_year: string | null
           sort_order: number
           start_date: string
           status: string
@@ -230,6 +232,8 @@ export type Database = {
           hidden?: boolean
           id?: string
           name: string
+          slash_golf_tourn_id?: string | null
+          slash_golf_year?: string | null
           sort_order: number
           start_date: string
           status?: string
@@ -241,6 +245,8 @@ export type Database = {
           hidden?: boolean
           id?: string
           name?: string
+          slash_golf_tourn_id?: string | null
+          slash_golf_year?: string | null
           sort_order?: number
           start_date?: string
           status?: string
