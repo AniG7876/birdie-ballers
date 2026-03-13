@@ -1,0 +1,1 @@
+ALTER TABLE public.tournament_results ADD CONSTRAINT tournament_results_tournament_golfer_unique UNIQUE (tournament_id, golfer_id);
