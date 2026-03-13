@@ -26,28 +26,28 @@ export default function AdminGolfers() {
   const { data: golfers, isLoading } = useAllGolfers();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
 
-  const handleImport = async () => {
-    setImporting(true);
+  const handleSync = async () => {
+    setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-top-golfers');
+      const { data, error } = await supabase.functions.invoke('seed-golfers');
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['all-golfers'] });
       queryClient.invalidateQueries({ queryKey: ['golfers'] });
-      toast({ title: 'Import complete', description: `${data?.upserted ?? 0} golfers synced from world rankings.` });
+      toast({ title: 'Golfer list synced', description: `${data?.synced ?? 0} golfers loaded from the master list.` });
     } catch (err: any) {
-      toast({ title: 'Import failed', description: err.message, variant: 'destructive' });
+      toast({ title: 'Sync failed', description: err.message, variant: 'destructive' });
     }
-    setImporting(false);
+    setSyncing(false);
   };
 
   const toggleActive = async (id: string, currentActive: boolean) => {
     setToggling(id);
     const { error } = await supabase
       .from('golfers')
-      .update({ active: !currentActive } as any)
+      .update({ active: !currentActive })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -58,7 +58,7 @@ export default function AdminGolfers() {
     setToggling(null);
   };
 
-  const activeCount = golfers?.filter((g) => (g as any).active).length ?? 0;
+  const activeCount = golfers?.filter((g) => g.active).length ?? 0;
 
   return (
     <Card>
@@ -66,13 +66,13 @@ export default function AdminGolfers() {
         <div>
           <CardTitle className="text-lg">Golfer Pool</CardTitle>
           <CardDescription>
-            Import the top 100 world-ranked golfers, then check the ones available for bidding.{' '}
+            Sync the master list of 50 golfers, then check the ones available for bidding.{' '}
             <span className="font-medium text-foreground">{activeCount} selected</span>
           </CardDescription>
         </div>
-        <Button onClick={handleImport} disabled={importing} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${importing ? 'animate-spin' : ''}`} aria-hidden="true" />
-          {importing ? 'Importing…' : 'Import Top 100'}
+        <Button onClick={handleSync} disabled={syncing} variant="outline" size="sm">
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {syncing ? 'Syncing…' : 'Sync Golfer List'}
         </Button>
       </CardHeader>
       <CardContent>
@@ -81,12 +81,12 @@ export default function AdminGolfers() {
         ) : !golfers?.length ? (
           <div className="text-center py-10 text-muted-foreground">
             <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">No golfers yet. Click "Import Top 100" to fetch world rankings.</p>
+            <p className="text-sm">No golfers yet. Click "Sync Golfer List" to load the master list.</p>
           </div>
         ) : (
           <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1">
             {golfers.map((g) => {
-              const isActive = (g as any).active ?? false;
+              const isActive = g.active ?? false;
               return (
                 <div
                   key={g.id}

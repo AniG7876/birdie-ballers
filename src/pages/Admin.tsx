@@ -5,6 +5,7 @@ import AdminTournaments from '@/components/AdminTournaments';
 import AdminDraft from '@/components/AdminDraft';
 import AdminSettings from '@/components/AdminSettings';
 import AdminGolfers from '@/components/AdminGolfers';
+import AdminBidAudit from '@/components/AdminBidAudit';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Admin() {
@@ -16,10 +17,11 @@ export default function Admin() {
       <main className="container py-6">
         <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex-wrap h-auto gap-1">
             <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
             <TabsTrigger value="golfers">Golfers</TabsTrigger>
             <TabsTrigger value="draft">Draft</TabsTrigger>
+            <TabsTrigger value="bid-audit">Bid Audit</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -31,6 +33,9 @@ export default function Admin() {
           </TabsContent>
           <TabsContent value="draft">
             <AdminDraft />
+          </TabsContent>
+          <TabsContent value="bid-audit">
+            <AdminBidAudit />
           </TabsContent>
           <TabsContent value="users">
             <AdminUsers />
