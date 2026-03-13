@@ -1,0 +1,1 @@
+ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS slash_golf_tourn_id text, ADD COLUMN IF NOT EXISTS slash_golf_year text;
