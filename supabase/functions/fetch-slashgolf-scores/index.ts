@@ -99,10 +99,14 @@ Deno.serve(async (req) => {
         (playerId && pointsByPlayerId[String(playerId)]) ||
         parseFloat(row.fedexPoints ?? row.fedexCupPoints ?? row.points ?? 0);
 
-// Score (e.g., -5, E, +2)
-      let scoreVal = row.toPar ?? row.total_to_par ?? row.total ?? row.score ?? row.totalScore ?? null;
-      if (scoreVal === 0 || scoreVal === "0") scoreVal = "E";
+      // Score: "total" field is the cumulative to-par score per API docs
+      let scoreVal: string | number | null = row.total ?? row.toPar ?? row.total_to_par ?? row.score ?? row.totalScore ?? null;
+      if (scoreVal === 0 || scoreVal === "0" || scoreVal === "E") scoreVal = "E";
       else if (typeof scoreVal === "number" && scoreVal > 0) scoreVal = `+${scoreVal}`;
+      else if (typeof scoreVal === "string" && scoreVal !== "E" && !scoreVal.startsWith("-") && !scoreVal.startsWith("+")) {
+        const parsed = parseInt(scoreVal, 10);
+        if (!isNaN(parsed)) scoreVal = parsed > 0 ? `+${parsed}` : parsed === 0 ? "E" : String(parsed);
+      }
       const score = scoreVal;
 
       upserts.push({
