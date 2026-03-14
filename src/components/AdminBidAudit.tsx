@@ -1,13 +1,16 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTournaments, useGolfers, useSettings } from '@/hooks/useFantasyData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { ClipboardList, Trophy } from 'lucide-react';
+import { ClipboardList, Trophy, Pencil, Trash2, Check, X, RefreshCw, Gavel } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 function useAllBidsForTournament(tournamentId?: string) {
   return useQuery({
@@ -55,7 +58,15 @@ export default function AdminBidAudit() {
   const { data: golfers } = useGolfers();
   const { data: settings } = useSettings();
   const { data: users } = useAllUsers();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [selectedTournament, setSelectedTournament] = useState<string>('');
+  // editingBidId → draft amount string while editing
+  const [editState, setEditState] = useState<Record<string, string>>({});
+  const [savingBid, setSavingBid] = useState<string | null>(null);
+  const [deletingBid, setDeletingBid] = useState<string | null>(null);
+  const [rerunning, setRerunning] = useState(false);
 
   const { data: bids } = useAllBidsForTournament(selectedTournament || undefined);
   const { data: allocations } = useShareAllocationsForTournament(selectedTournament || undefined);
@@ -133,7 +144,7 @@ export default function AdminBidAudit() {
         allocations: golferAllocs.map((a) => ({
           userId: a.user_id,
           userName: userMap.get(a.user_id) ?? a.user_id,
-          shares: a.shares,
+          shares: Number(a.shares),
           bidAmount: gBids.find((b) => b.user_id === a.user_id)?.bid_amount ?? 0,
         })),
       });
@@ -144,6 +155,119 @@ export default function AdminBidAudit() {
   const selectedT = tournaments?.find((t) => t.id === selectedTournament);
   const isDrafted = selectedT && !['upcoming', 'bidding'].includes(selectedT.status);
 
+  // --- Bid editing helpers ---
+  const startEdit = (bidId: string, currentAmount: number) => {
+    setEditState((prev) => ({ ...prev, [bidId]: String(currentAmount) }));
+  };
+  const cancelEdit = (bidId: string) => {
+    setEditState((prev) => {
+      const next = { ...prev };
+      delete next[bidId];
+      return next;
+    });
+  };
+
+  const saveBid = useCallback(async (bidId: string) => {
+    const newAmount = parseInt(editState[bidId] ?? '', 10);
+    if (isNaN(newAmount) || newAmount < 0) {
+      toast({ title: 'Invalid amount', description: 'Enter a non-negative integer.', variant: 'destructive' });
+      return;
+    }
+    setSavingBid(bidId);
+    const { error } = await supabase.from('bids').update({ bid_amount: newAmount }).eq('id', bidId);
+    setSavingBid(null);
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    } else {
+      cancelEdit(bidId);
+      queryClient.invalidateQueries({ queryKey: ['audit-bids', selectedTournament] });
+      toast({ title: 'Bid updated' });
+    }
+  }, [editState, selectedTournament, queryClient, toast]);
+
+  const deleteBid = useCallback(async (bidId: string) => {
+    setDeletingBid(bidId);
+    const { error } = await supabase.from('bids').delete().eq('id', bidId);
+    setDeletingBid(null);
+    if (error) {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['audit-bids', selectedTournament] });
+      toast({ title: 'Bid deleted' });
+    }
+  }, [selectedTournament, queryClient, toast]);
+
+  // --- Re-run draft ---
+  const rerunDraft = useCallback(async () => {
+    if (!selectedTournament || !bids || !golfers) return;
+    setRerunning(true);
+    try {
+      // Clear existing allocations for this tournament
+      await supabase.from('share_allocations').delete().eq('tournament_id', selectedTournament);
+
+      const allocationsToInsert: { user_id: string; tournament_id: string; golfer_id: string; shares: number }[] = [];
+
+      for (const golfer of golfers) {
+        const golferBids = bids
+          .filter((b) => b.golfer_id === golfer.id)
+          .sort((a, b) => b.bid_amount - a.bid_amount);
+
+        if (golferBids.length === 0) continue;
+
+        const uniqueBidderCount = new Set(golferBids.map((b) => b.user_id)).size;
+        if (uniqueBidderCount === 1) {
+          allocationsToInsert.push({
+            user_id: golferBids[0].user_id,
+            tournament_id: selectedTournament,
+            golfer_id: golfer.id,
+            shares: 1,
+          });
+          continue;
+        }
+
+        let sharesRemaining = MAX_SHARES;
+        let i = 0;
+        while (i < golferBids.length && sharesRemaining > 0) {
+          const currentBidAmount = golferBids[i].bid_amount;
+          const tiedBidders = golferBids.filter((b) => b.bid_amount === currentBidAmount);
+          const sharesEach = Math.min(sharesRemaining, MAX_SHARES) / tiedBidders.length;
+          const actualSharesEach = Math.min(sharesEach, sharesRemaining / tiedBidders.length);
+
+          for (const bid of tiedBidders) {
+            if (sharesRemaining <= 0) break;
+            const shares = Math.round(actualSharesEach * 100) / 100;
+            if (shares > 0) {
+              allocationsToInsert.push({
+                user_id: bid.user_id,
+                tournament_id: selectedTournament,
+                golfer_id: golfer.id,
+                shares,
+              });
+              sharesRemaining -= shares;
+            }
+          }
+          i += tiedBidders.length;
+        }
+      }
+
+      if (allocationsToInsert.length > 0) {
+        const { error } = await supabase.from('share_allocations').insert(allocationsToInsert);
+        if (error) throw error;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['audit-allocations', selectedTournament] });
+      queryClient.invalidateQueries({ queryKey: ['share-allocations'] });
+      queryClient.invalidateQueries({ queryKey: ['share-allocations-leaderboard', selectedTournament] });
+      toast({
+        title: 'Draft re-processed',
+        description: `${allocationsToInsert.length} share allocations recalculated.`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Re-run failed', description: err.message, variant: 'destructive' });
+    }
+    setRerunning(false);
+  }, [selectedTournament, bids, golfers, MAX_SHARES, queryClient, toast]);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -153,7 +277,7 @@ export default function AdminBidAudit() {
             Bid Audit
           </CardTitle>
           <CardDescription>
-            View all submitted bids and the exact draft outcome for any tournament.
+            View, edit, and delete bids for any tournament, then re-run the draft to recalculate share allocations.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -177,13 +301,34 @@ export default function AdminBidAudit() {
 
       {selectedTournament && (
         <>
-          {/* Section A — Raw Bids */}
+          {/* Section A — Raw Bids (editable) */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Raw Bids</CardTitle>
-              <CardDescription>
-                {bids?.length ?? 0} bids from {new Set(bids?.map((b) => b.user_id)).size} players
-              </CardDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base">Raw Bids</CardTitle>
+                  <CardDescription>
+                    {bids?.length ?? 0} bids from {new Set(bids?.map((b) => b.user_id)).size} players.
+                    Click the pencil icon to edit a bid amount, or the trash icon to delete it.
+                  </CardDescription>
+                </div>
+                {isDrafted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={rerunDraft}
+                    disabled={rerunning}
+                    className="shrink-0 flex items-center gap-1.5"
+                  >
+                    {rerunning ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Gavel className="h-3.5 w-3.5" />
+                    )}
+                    {rerunning ? 'Re-running…' : 'Re-run Draft'}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {bidsByGolfer.length === 0 ? (
@@ -198,19 +343,92 @@ export default function AdminBidAudit() {
                           <TableRow>
                             <TableHead className="h-8 text-xs">Player</TableHead>
                             <TableHead className="h-8 text-xs text-right">Bid Amount</TableHead>
+                            <TableHead className="h-8 text-xs w-20" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {gBids.map((bid) => (
-                            <TableRow key={bid.id}>
-                              <TableCell className="py-1.5 text-sm">
-                                {userMap.get(bid.user_id) ?? bid.user_id}
-                              </TableCell>
-                              <TableCell className="py-1.5 text-sm text-right font-mono">
-                                {bid.bid_amount}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {gBids.map((bid) => {
+                            const isEditing = bid.id in editState;
+                            const isSaving = savingBid === bid.id;
+                            const isDeleting = deletingBid === bid.id;
+                            return (
+                              <TableRow key={bid.id}>
+                                <TableCell className="py-1.5 text-sm">
+                                  {userMap.get(bid.user_id) ?? bid.user_id}
+                                </TableCell>
+                                <TableCell className="py-1.5 text-sm text-right font-mono">
+                                  {isEditing ? (
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={editState[bid.id]}
+                                      onChange={(e) =>
+                                        setEditState((prev) => ({ ...prev, [bid.id]: e.target.value }))
+                                      }
+                                      className="h-7 w-24 text-right font-mono ml-auto"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveBid(bid.id);
+                                        if (e.key === 'Escape') cancelEdit(bid.id);
+                                      }}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    bid.bid_amount
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-1.5">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {isEditing ? (
+                                      <>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 text-success"
+                                          onClick={() => saveBid(bid.id)}
+                                          disabled={isSaving}
+                                          aria-label="Save bid"
+                                        >
+                                          <Check className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6"
+                                          onClick={() => cancelEdit(bid.id)}
+                                          disabled={isSaving}
+                                          aria-label="Cancel edit"
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                          onClick={() => startEdit(bid.id, bid.bid_amount)}
+                                          aria-label="Edit bid"
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                          onClick={() => deleteBid(bid.id)}
+                                          disabled={isDeleting}
+                                          aria-label="Delete bid"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
