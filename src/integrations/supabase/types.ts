@@ -172,6 +172,7 @@ export type Database = {
           golfer_id: string
           id: string
           position: number | null
+          score: string | null
           status: string | null
           tournament_id: string
           updated_at: string
@@ -181,6 +182,7 @@ export type Database = {
           golfer_id: string
           id?: string
           position?: number | null
+          score?: string | null
           status?: string | null
           tournament_id: string
           updated_at?: string
@@ -190,6 +192,7 @@ export type Database = {
           golfer_id?: string
           id?: string
           position?: number | null
+          score?: string | null
           status?: string | null
           tournament_id?: string
           updated_at?: string
