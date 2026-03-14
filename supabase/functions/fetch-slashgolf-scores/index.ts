@@ -99,11 +99,15 @@ Deno.serve(async (req) => {
         (playerId && pointsByPlayerId[String(playerId)]) ||
         parseFloat(row.fedexPoints ?? row.fedexCupPoints ?? row.points ?? 0);
 
+      // Score (e.g., -5, E, +2)
+      const score = row.total ?? row.score ?? row.totalScore ?? null;
+
       upserts.push({
         tournament_id: tournamentId,
         golfer_id: golferId,
         position: posNum,
         status: String(status),
+        score: score !== null ? String(score) : null,
         fedex_points: fedexPoints,
         updated_at: new Date().toISOString(),
       });
