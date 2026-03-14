@@ -99,8 +99,11 @@ Deno.serve(async (req) => {
         (playerId && pointsByPlayerId[String(playerId)]) ||
         parseFloat(row.fedexPoints ?? row.fedexCupPoints ?? row.points ?? 0);
 
-      // Score (e.g., -5, E, +2)
-      const score = row.total ?? row.score ?? row.totalScore ?? null;
+// Score (e.g., -5, E, +2)
+      let scoreVal = row.toPar ?? row.total_to_par ?? row.total ?? row.score ?? row.totalScore ?? null;
+      if (scoreVal === 0 || scoreVal === "0") scoreVal = "E";
+      else if (typeof scoreVal === "number" && scoreVal > 0) scoreVal = `+${scoreVal}`;
+      const score = scoreVal;
 
       upserts.push({
         tournament_id: tournamentId,
