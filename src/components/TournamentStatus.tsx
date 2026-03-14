@@ -28,9 +28,9 @@ export default function TournamentStatus({ tournament }: Props) {
   const sortedGolfers = Object.entries(golferAllocations).sort((a, b) => a[1].rank - b[1].rank);
 
   // Get results map
-  const resultsMap: Record<string, { position: number | null; fedex_points: number }> = {};
+  const resultsMap: Record<string, { position: number | null; score: string | null; fedex_points: number }> = {};
   results?.forEach((r: any) => {
-    resultsMap[r.golfer_id] = { position: r.position, fedex_points: r.fedex_points };
+    resultsMap[r.golfer_id] = { position: r.position, score: r.score, fedex_points: r.fedex_points };
   });
 
   return (
@@ -52,6 +52,7 @@ export default function TournamentStatus({ tournament }: Props) {
                   <th className="text-left py-2 pr-3 font-semibold text-muted-foreground" scope="col">Golfer</th>
                   <th className="text-left py-2 pr-3 font-semibold text-muted-foreground" scope="col">Owners</th>
                   <th className="text-right py-2 pr-3 font-semibold text-muted-foreground" scope="col">Pos</th>
+                  <th className="text-right py-2 pr-3 font-semibold text-muted-foreground" scope="col">Score</th>
                   <th className="text-right py-2 font-semibold text-muted-foreground" scope="col">FedEx Pts</th>
                 </tr>
               </thead>
@@ -68,6 +69,7 @@ export default function TournamentStatus({ tournament }: Props) {
                         {g.users.map((u) => `${u.name} (${u.shares})`).join(', ')}
                       </td>
                       <td className="py-2 pr-3 text-right font-mono">{res?.position ?? '—'}</td>
+                      <td className="py-2 pr-3 text-right font-mono font-medium">{res?.score ?? '—'}</td>
                       <td className="py-2 text-right font-mono font-medium">{res?.fedex_points?.toFixed(1) ?? '—'}</td>
                     </tr>
                   );
