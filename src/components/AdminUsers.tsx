@@ -63,13 +63,13 @@ export default function AdminUsers() {
   };
 
   const saveEdit = async (id: string) => {
-    if (!editName.trim()) return;
+    if (!editName.trim() || !editCode.trim()) return;
     setLoadingId(id);
-    const { error } = await supabase.from('users').update({ name: editName.trim() }).eq('id', id);
+    const { error } = await supabase.from('users').update({ name: editName.trim(), code: editCode.trim() }).eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Name updated' });
+      toast({ title: 'Player updated' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       cancelEdit();
     }
