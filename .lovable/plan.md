@@ -1,22 +1,39 @@
 
 
-## Add and Activate Golfers
+## Fix: Insert Missing 19 Golfers
 
-Most of the 22 golfers you listed are already in the seed list. Three are missing and need to be added: **Cameron Smith**, **Gary Woodland**, and **Jordan Spieth**.
+The database currently has only 20 golfers. The 19 that were supposed to be activated by the previous migration never got inserted — they simply don't exist in the table. The missing golfers are:
 
-### Changes
+Justin Rose, Robert MacIntyre, Sepp Straka, J.J. Spaun, Ben Griffin, Harris English, Alex Noren, Akshay Bhatia, Patrick Reed, Keegan Bradley, Matt Fitzpatrick, Maverick McNealy, Tyrrell Hatton, Min Woo Lee, Jon Rahm, Jason Day, Bryson DeChambeau, Jake Knapp, Adam Scott
 
-**1. Update `supabase/functions/seed-golfers/index.ts`**
-- Add 3 new entries to the GOLFERS array (ranks 51–53):
-  - Cameron Smith (51)
-  - Gary Woodland (52)
-  - Jordan Spieth (53)
+### Plan
 
-**2. Insert the 3 new golfers into the database**
-- Run a SQL migration to insert Cameron Smith, Gary Woodland, and Jordan Spieth into the `golfers` table with `active = true`
+**Single step — Insert the 19 missing golfers via the data insert tool**
 
-**3. Activate the existing 19 golfers in the database**
-- Run a SQL migration to set `active = true` for all 22 golfers by name, ensuring they appear in the bidding pool immediately
+Run an INSERT statement to add all 19 golfers with their correct `world_rank` from the seed list and `active = true`:
 
-This is a single migration that inserts the missing golfers and flips `active` on all 22. No UI changes needed — the admin Golfers tab will reflect the updates automatically.
+```sql
+INSERT INTO golfers (name, world_rank, active) VALUES
+  ('Justin Rose', 5, true),
+  ('Robert MacIntyre', 8, true),
+  ('Sepp Straka', 9, true),
+  ('J.J. Spaun', 11, true),
+  ('Ben Griffin', 13, true),
+  ('Harris English', 16, true),
+  ('Alex Noren', 17, true),
+  ('Akshay Bhatia', 19, true),
+  ('Patrick Reed', 20, true),
+  ('Keegan Bradley', 23, true),
+  ('Matt Fitzpatrick', 24, true),
+  ('Maverick McNealy', 25, true),
+  ('Tyrrell Hatton', 26, true),
+  ('Min Woo Lee', 30, true),
+  ('Jon Rahm', 36, true),
+  ('Jason Day', 40, true),
+  ('Bryson DeChambeau', 41, true),
+  ('Jake Knapp', 42, true),
+  ('Adam Scott', 50, true);
+```
+
+No code or schema changes needed — the Admin Golfers tab will automatically show all 39 golfers after the insert.
 
