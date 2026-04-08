@@ -21,6 +21,7 @@ export default function AdminUsers() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const nonAdminUsers = users?.filter((u) => !u.is_admin) ?? [];
@@ -49,24 +50,26 @@ export default function AdminUsers() {
     toast({ title: 'Copied!', description: 'Access code copied to clipboard.' });
   };
 
-  const startEdit = (id: string, name: string) => {
+  const startEdit = (id: string, name: string, code: string) => {
     setEditingId(id);
     setEditName(name);
+    setEditCode(code);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName('');
+    setEditCode('');
   };
 
   const saveEdit = async (id: string) => {
-    if (!editName.trim()) return;
+    if (!editName.trim() || !editCode.trim()) return;
     setLoadingId(id);
-    const { error } = await supabase.from('users').update({ name: editName.trim() }).eq('id', id);
+    const { error } = await supabase.from('users').update({ name: editName.trim(), code: editCode.trim() }).eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Name updated' });
+      toast({ title: 'Player updated' });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       cancelEdit();
     }
@@ -123,41 +126,58 @@ export default function AdminUsers() {
                   <tr key={u.id} className="border-b last:border-0">
                     <td className="py-2 pr-4">
                       {editingId === u.id ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(u.id); if (e.key === 'Escape') cancelEdit(); }}
-                            className="h-7 w-36 text-sm"
-                            maxLength={50}
-                            autoFocus
-                          />
-                          <Button variant="ghost" size="sm" onClick={() => saveEdit(u.id)} disabled={loadingId === u.id} aria-label="Save name">
-                            <Check className="h-3.5 w-3.5 text-primary" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={cancelEdit} aria-label="Cancel edit">
-                            <X className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(u.id); if (e.key === 'Escape') cancelEdit(); }}
+                          className="h-7 w-36 text-sm"
+                          maxLength={50}
+                          autoFocus
+                        />
                       ) : (
                         u.name
                       )}
                     </td>
-                    <td className="py-2 pr-4 font-mono tracking-wider">{u.code}</td>
+                    <td className="py-2 pr-4 font-mono tracking-wider">
+                      {editingId === u.id ? (
+                        <Input
+                          value={editCode}
+                          onChange={(e) => setEditCode(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(u.id); if (e.key === 'Escape') cancelEdit(); }}
+                          className="h-7 w-28 text-sm font-mono"
+                          maxLength={10}
+                        />
+                      ) : (
+                        u.code
+                      )}
+                    </td>
                     <td className="py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => copyCode(u.code)} aria-label={`Copy code for ${u.name}`}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(u.id, u.name)} disabled={loadingId === u.id || editingId === u.id} aria-label={`Rename ${u.name}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => regenCode(u.id)} disabled={loadingId === u.id} aria-label={`Regenerate code for ${u.name}`}>
-                          <RefreshCw className={`h-4 w-4 ${loadingId === u.id ? 'animate-spin' : ''}`} />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteUser(u.id, u.name)} disabled={loadingId === u.id} aria-label={`Delete ${u.name}`}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {editingId === u.id ? (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => saveEdit(u.id)} disabled={loadingId === u.id} aria-label="Save changes">
+                              <Check className="h-3.5 w-3.5 text-primary" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEdit} aria-label="Cancel edit">
+                              <X className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => copyCode(u.code)} aria-label={`Copy code for ${u.name}`}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => startEdit(u.id, u.name, u.code)} disabled={loadingId === u.id} aria-label={`Edit ${u.name}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => regenCode(u.id)} disabled={loadingId === u.id} aria-label={`Regenerate code for ${u.name}`}>
+                              <RefreshCw className={`h-4 w-4 ${loadingId === u.id ? 'animate-spin' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteUser(u.id, u.name)} disabled={loadingId === u.id} aria-label={`Delete ${u.name}`}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
