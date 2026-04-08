@@ -56,6 +56,9 @@ const GOLFERS = [
   { world_rank: 48, name: 'Pierceson Coody' },
   { world_rank: 49, name: 'Sam Stevens' },
   { world_rank: 50, name: 'Adam Scott' },
+  { world_rank: 51, name: 'Cameron Smith' },
+  { world_rank: 52, name: 'Gary Woodland' },
+  { world_rank: 53, name: 'Jordan Spieth' },
 ];
 
 Deno.serve(async (req) => {
