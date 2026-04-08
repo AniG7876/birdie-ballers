@@ -50,14 +50,16 @@ export default function AdminUsers() {
     toast({ title: 'Copied!', description: 'Access code copied to clipboard.' });
   };
 
-  const startEdit = (id: string, name: string) => {
+  const startEdit = (id: string, name: string, code: string) => {
     setEditingId(id);
     setEditName(name);
+    setEditCode(code);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName('');
+    setEditCode('');
   };
 
   const saveEdit = async (id: string) => {
