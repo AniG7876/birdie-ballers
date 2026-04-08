@@ -21,6 +21,7 @@ export default function AdminUsers() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const nonAdminUsers = users?.filter((u) => !u.is_admin) ?? [];
