@@ -121,7 +121,7 @@ export default function LiveLeaderboard({ tournamentId, tournamentName, slashGol
               <th className="text-left py-2.5 px-4 font-semibold text-muted-foreground w-16" scope="col">Pos</th>
               <th className="text-left py-2.5 px-4 font-semibold text-muted-foreground" scope="col">Player</th>
               <th className="text-right py-2.5 px-4 font-semibold text-muted-foreground w-24" scope="col">Score</th>
-              <th className="text-right py-2.5 px-4 font-semibold text-muted-foreground w-24 hidden sm:table-cell" scope="col">FedEx Pts</th>
+              <th className="text-right py-2.5 px-4 font-semibold text-muted-foreground w-24 hidden sm:table-cell" scope="col">Points</th>
               <th className="text-left py-2.5 px-4 font-semibold text-muted-foreground hidden md:table-cell" scope="col">Drafted By</th>
             </tr>
           </thead>
