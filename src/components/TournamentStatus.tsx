@@ -53,7 +53,7 @@ export default function TournamentStatus({ tournament }: Props) {
                   <th className="text-left py-2 pr-3 font-semibold text-muted-foreground" scope="col">Owners</th>
                   <th className="text-right py-2 pr-3 font-semibold text-muted-foreground" scope="col">Pos</th>
                   <th className="text-right py-2 pr-3 font-semibold text-muted-foreground" scope="col">Score</th>
-                  <th className="text-right py-2 font-semibold text-muted-foreground" scope="col">FedEx Pts</th>
+                  <th className="text-right py-2 font-semibold text-muted-foreground" scope="col">Points</th>
                 </tr>
               </thead>
               <tbody>

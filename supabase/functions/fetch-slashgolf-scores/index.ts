@@ -36,11 +36,11 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // Fetch leaderboard and points in parallel
-    const [leaderboardRes, pointsRes] = await Promise.all([
-      fetch(`${BASE_URL}/leaderboard?orgId=1&tournId=${slashGolfTournId}&year=${slashGolfYear}`, { headers }),
-      fetch(`${BASE_URL}/points?tournId=${slashGolfTournId}&year=${slashGolfYear}`, { headers }),
-    ]);
+    // Fetch leaderboard from API
+    const leaderboardRes = await fetch(
+      `${BASE_URL}/leaderboard?orgId=1&tournId=${slashGolfTournId}&year=${slashGolfYear}`,
+      { headers },
+    );
 
     if (!leaderboardRes.ok) {
       const body = await leaderboardRes.text();
@@ -48,79 +48,97 @@ Deno.serve(async (req) => {
     }
 
     const leaderboardData = await leaderboardRes.json();
-    const pointsData = pointsRes.ok ? await pointsRes.json() : null;
-
     console.log('Leaderboard keys:', Object.keys(leaderboardData));
 
-    // Build points lookup by playerId
-    const pointsByPlayerId: Record<string, number> = {};
-    if (pointsData) {
-      const pointsList = pointsData.pointsList ?? pointsData.points ?? pointsData.players ?? [];
-      for (const p of pointsList) {
-        const pid = p.playerId ?? p.player_id;
-        const pts = parseFloat(p.points ?? p.fedexPoints ?? p.fedexCupPoints ?? 0);
-        if (pid) pointsByPlayerId[String(pid)] = pts;
-      }
-    }
-
-    // Parse leaderboard rows
     const rows = leaderboardData.rows ?? leaderboardData.leaderboardRows ?? leaderboardData.players ?? [];
 
-    // Get all golfers from DB to match by name
+    // Get golfers and points_lookup from DB
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
-    const { data: golfers } = await supabase.from('golfers').select('id, name');
-    const golferMap = new Map((golfers ?? []).map((g: any) => [normalize(g.name), g.id]));
 
-    const upserts: any[] = [];
+    const [golfersRes, pointsRes] = await Promise.all([
+      supabase.from('golfers').select('id, name'),
+      supabase.from('points_lookup').select('rank, points'),
+    ]);
+
+    const golferMap = new Map((golfersRes.data ?? []).map((g: any) => [normalize(g.name), g.id]));
+    
+    // Build rank → points lookup
+    const pointsLookup = new Map<number, number>();
+    for (const p of (pointsRes.data ?? [])) {
+      pointsLookup.set(p.rank, Number(p.points));
+    }
+
+    // Parse all rows to get positions
+    interface ParsedRow {
+      golferId: string;
+      position: number | null;
+      status: string;
+      score: string | null;
+    }
+
+    const parsed: ParsedRow[] = [];
 
     for (const row of rows) {
-      // Player name from various possible fields
       const firstName = row.firstName ?? row.first_name ?? '';
       const lastName = row.lastName ?? row.last_name ?? '';
       const fullName = `${firstName} ${lastName}`.trim();
-      const normName = normalize(fullName);
-
-      const golferId = golferMap.get(normName);
+      const golferId = golferMap.get(normalize(fullName));
       if (!golferId) continue;
 
-      // Position
       const pos = row.position ?? row.pos ?? null;
       const posNum = pos ? parseInt(String(pos).replace(/[^0-9]/g, ''), 10) || null : null;
-
-      // Status
       const status = row.status ?? row.playerState ?? 'active';
 
-      // FedEx points: prefer official points endpoint, fallback to leaderboard field
-      const playerId = row.playerId ?? row.player_id;
-      const fedexPoints =
-        (playerId && pointsByPlayerId[String(playerId)]) ||
-        parseFloat(row.fedexPoints ?? row.fedexCupPoints ?? row.points ?? 0);
-
-      // Score: "total" field is the cumulative to-par score per API docs
+      // Score formatting
       let scoreVal: string | number | null = row.total ?? row.toPar ?? row.total_to_par ?? row.score ?? row.totalScore ?? null;
       if (scoreVal === 0 || scoreVal === "0" || scoreVal === "E") scoreVal = "E";
       else if (typeof scoreVal === "number" && scoreVal > 0) scoreVal = `+${scoreVal}`;
       else if (typeof scoreVal === "string" && scoreVal !== "E" && !scoreVal.startsWith("-") && !scoreVal.startsWith("+")) {
-        const parsed = parseInt(scoreVal, 10);
-        if (!isNaN(parsed)) scoreVal = parsed > 0 ? `+${parsed}` : parsed === 0 ? "E" : String(parsed);
+        const p = parseInt(scoreVal, 10);
+        if (!isNaN(p)) scoreVal = p > 0 ? `+${p}` : p === 0 ? "E" : String(p);
       }
-      const score = scoreVal;
 
-      upserts.push({
-        tournament_id: tournamentId,
-        golfer_id: golferId,
-        position: posNum,
-        status: String(status),
-        score: score !== null ? String(score) : null,
-        fedex_points: fedexPoints,
-        updated_at: new Date().toISOString(),
-      });
+      parsed.push({ golferId, position: posNum, status: String(status), score: scoreVal !== null ? String(scoreVal) : null });
     }
 
-    // Upsert results
+    // Calculate custom points with tie-averaging
+    // Group all players by position to handle ties
+    const positionGroups = new Map<number, ParsedRow[]>();
+    for (const r of parsed) {
+      if (r.position != null && !['cut', 'mc', 'wd', 'dq', 'w/d'].includes(r.status.toLowerCase())) {
+        if (!positionGroups.has(r.position)) positionGroups.set(r.position, []);
+        positionGroups.get(r.position)!.push(r);
+      }
+    }
+
+    // For each position group, average the points across the ranks they span
+    const golferPoints = new Map<string, number>();
+    for (const [pos, group] of positionGroups) {
+      const count = group.length;
+      let totalPts = 0;
+      for (let i = 0; i < count; i++) {
+        totalPts += pointsLookup.get(pos + i) ?? 0;
+      }
+      const avgPts = totalPts / count;
+      for (const r of group) {
+        golferPoints.set(r.golferId, avgPts);
+      }
+    }
+
+    // Build upserts
+    const upserts = parsed.map((r) => ({
+      tournament_id: tournamentId,
+      golfer_id: r.golferId,
+      position: r.position,
+      status: r.status,
+      score: r.score,
+      fedex_points: golferPoints.get(r.golferId) ?? 0,
+      updated_at: new Date().toISOString(),
+    }));
+
     let updated = 0;
     if (upserts.length > 0) {
       const { error } = await supabase
