@@ -90,6 +90,21 @@ export type Database = {
         }
         Relationships: []
       }
+      points_lookup: {
+        Row: {
+          points: number
+          rank: number
+        }
+        Insert: {
+          points: number
+          rank: number
+        }
+        Update: {
+          points?: number
+          rank?: number
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string
